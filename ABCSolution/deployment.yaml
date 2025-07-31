@@ -1,7 +1,9 @@
 kind: Deployment
 apiVersion: apps/v1
 metadata:
-    name: abc-tech-dep
+  namespace: 
+  name: abc-tech-dep
+
 spec:
     replicas: 2
     minReadySeconds: 45

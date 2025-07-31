@@ -398,7 +398,7 @@ Downloaded from central: https://repo.maven.apache.org/maven2/org/codehaus/plexu
 ## Task 2
 Setup git repository and push the source code. Login to Jenkins
 1. create 3 jobs
-  - 0ne for compiling source code
+  - One for compiling source code
   - Second for testing source code
   - Third for packing the code
 2. Setup CICD pipeline to execute the jobs created in step1
@@ -408,3 +408,56 @@ Setup git repository and push the source code. Login to Jenkins
 
 The repository is available at:
 https://github.com/hajnalmt/purdue-final-devops-project
+
+### Login to jenkins
+Admin credentials are available in the base secret:
+
+User:
+```sh
+ ./bin/kubectl get secrets -n jenkins jenkins -o json  | jq -r '.data."jenkins-admin-user"' |
+base64 -d
+```
+Example output:
+```sh
+admin
+```
+
+Password
+```sh
+./bin/kubectl get secrets -n jenkins jenkins -o json  | jq -r '.data."jenkins-admin-password"' | base64 -d
+```
+Example output:
+```sh
+iy3pZITxcIRXUUcpMQ1km3
+```
+
+![image](./assets/login_to_jenkins.png)
+
+### About the plugins:
+The kubernetes and docker plugins should be available.
+Go to Manage Jenkins → Manage Plugins and search for them.
+
+Verifying kubernetes plugin availability :
+![image](./assets/jenkins_kubernetes_plugin_is_available.png)
+
+Docker plugin wasn't installed for me:
+I installed them:
+![image](./assets/jenkins_install_docker_plugins1.png)
+![image](./assets/jenkins_install_docker_plugins2.png)
+
+### Let's use the kubernetes k3d cluster in place to start our agents!
+For earlier release we need to add a Kubernetes Cloud:
+
+Go to “Manage Jenkins” → “System Configuration” → “Clouds”.
+Add a new “Kubernetes” cloud.
+Set Kubernetes URL to https://kubernetes.default (in-cluster) or your cluster’s API endpoint.
+Credentials: Use “Kubernetes Service Account” (default for in-cluster Jenkins).
+Test Connection.
+
+This is already there for us!
+![image](./assets/jenkins_local_kubernetes1.png)
+![image](./assets/jenkins_local_kubernetes2.png)
+
+Let's create a Pod template:
+![image](./assets/jenkins_maven_agent_pod_template.png)
+![image](./assets/jenkins_maven_agent_pod_template_container.png)
