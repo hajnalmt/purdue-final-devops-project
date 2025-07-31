@@ -461,3 +461,16 @@ This is already there for us!
 Let's create a Pod template:
 ![image](./assets/jenkins_maven_agent_pod_template.png)
 ![image](./assets/jenkins_maven_agent_pod_template_container.png)
+
+> **_NOTE:_** It's important to set theName of the container that will run the Jenkins agent to "maven-agent" too. Additionally I needed to tick in the "Inject Jenkins agent in agent container?" boolean.
+
+### We can use the new template created
+I have created a Jenkins Folder ABC Technologies and a Freestyle pipeline for each step.
+![image](./assets/jenkins_ABC_folder_project.png)
+![image](./assets/jenkins_ABC_compile_pipeline.png)
+
+The pipeline will clone the repository:
+![image](./assets/jenkins_ABC_compile_pipeline_git.png)
+
+Also it will execute simple mvn compile command in the appropriate directory.
+![image](./assets/jenkins_ABC_compile_pipeline_shell_commands.png)
