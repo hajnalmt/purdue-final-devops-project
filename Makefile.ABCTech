@@ -1,0 +1,18 @@
+# Makefile for ABCTechnologies Maven project
+
+.PHONY: compile test package clean install
+
+compile:
+	docker run --rm -v $(PWD)/ABCTechnologies:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn compile
+
+test:
+	docker run --rm -v $(PWD)/ABCTechnologies:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
+
+package:
+	docker run --rm -v $(PWD)/ABCTechnologies:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn package
+
+clean:
+	docker run --rm -v $(PWD)/ABCTechnologies:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean
+
+install:
+	docker run --rm -v $(PWD)/ABCTechnologies:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean install

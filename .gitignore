@@ -1,3 +1,5 @@
 # Ignore local binaries
 bin/
 data/
+ABCTechnologies/target/
+XYZTechnologies/target/

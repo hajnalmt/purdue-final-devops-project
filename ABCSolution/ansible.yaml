@@ -1,0 +1,30 @@
+- hosts: localhost
+  become: yes
+  tasks:
+        - name: Build an image and push it to a private repo
+          community.docker.docker_image:
+              build:
+                  path: "/home/edureka/Desktop"
+              name: docker.io/hajnalmt/abctechnologies
+              tag: test
+              push: true
+              source: build
+          register: out
+        - debug:
+              var: out  
+        - name: start a container
+          community.docker.docker_container:
+             name: abc-application
+             image: hajnalmt/abctechnologies
+             state: started
+             ports:
+                 - 1234:8080
+             restart: true
+          register: out
+        - debug:
+              var: out
+        - name: Create a Deployment by reading the definition from a local file 
+          command: "kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f /home/edureka/Desktop/deployment.yml"    
+          register: out
+        - debug:
+              var: out

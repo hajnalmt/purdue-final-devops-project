@@ -169,4 +169,242 @@ All services are exposed via Traefik ingress with TLS, using nip.io DNS:
 
 This environment is now ready to be used for all ABC Technologies DevOps tasks, including CI/CD, containerization, deployment, and monitoring, as described in the project requirements.
 
-### Creating the pipeline
+## Creating the pipeline
+
+The repository is cloned out, let's do the tasks one by one.
+
+## Task 1:
+Clone the project from git hub link shared in resources to your local machine. Build the code
+using maven commands.
+
+### ABCTechnologies Maven Makefile Integration
+
+A dedicated `Makefile.ABCTech` is placed in the root of the repository. This file provides convenient targets for compiling, testing, packaging, cleaning, and installing the Maven project in the `ABCTechnologies` directory, all using Dockerized Maven. This approach ensures a consistent build environment without requiring Maven or Java to be installed on the host system.
+
+To use these targets, run the following commands from the project root, specifying the Makefile with `-f`:
+
+```
+make -f Makefile.ABCTech compile      # Compiles the ABCTechnologies Maven project
+make -f Makefile.ABCTech test         # Runs tests
+make -f Makefile.ABCTech package      # Packages the project
+make -f Makefile.ABCTech clean        # Cleans the build
+make -f Makefile.ABCTech install      # Cleans and installs the project
+```
+
+All commands are executed in a Maven Docker container, mounting the `ABCTechnologies` directory for isolation and reproducibility.
+
+This setup is ideal for CI/CD and local development, ensuring builds are always performed in a clean, controlled environment.
+
+#### Example output for each command:
+
+Let's compile:
+```sh
+make -f Makefile.ABCTech compile
+```
+Output:
+```sh
+docker run --rm -v /home/uih20178/Github/purdue-final-devops-project/ABCTechnologies:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn compile
+Unable to find image 'maven:3.9.6-eclipse-temurin-17' locally
+3.9.6-eclipse-temurin-17: Pulling from library/maven
+4a023cab5400: Pull complete
+5e5d1bccc544: Pull complete
+d59fd278c1b4: Pull complete
+c97285723537: Pull complete
+a3ba11f7aaae: Pull complete
+67f99c2668af: Pull complete
+45f480637770: Pull complete
+58c3491a14eb: Pull complete
+4712dfa85971: Pull complete
+fc06d68d71ba: Pull complete
+Digest: sha256:29a1658b1f3078e07c2b17f7b519b45eb47f65d9628e887eac45a8c5c8f939d4
+Status: Downloaded newer image for maven:3.9.6-eclipse-temurin-17
+[INFO] Scanning for projects...
+[INFO]
+[INFO] ----------------------< com.abc:ABCtechnologies >-----------------------
+[INFO] Building RetailModule 1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ war ]---------------------------------
+Downloading from central: https://repo.maven.apache.org/maven2/org/jacoco/jacoco-maven-plugin/0.8.6/jacoco-maven-plugin-0.8.6.pom
+Downloaded from central: https://repo.maven.apache.org/maven2/org/jacoco/jacoco-maven-plugin/0.8.6/jacoco-maven-plugin-0.8.6.pom (4.4 kB at 16 kB/s)
+Downloading from central: https://repo.maven.apache.org/maven2/org/jacoco/org.jacoco.build/0.8.6/org.jacoco.build-0.8.6.pom
+Downloaded from central: https://repo.maven.apache.org/maven2/org/jacoco/org.jacoco.build/0.8.6/org.jacoco.build-0.8.6.pom (42 kB at 1.1 MB/s)
+Downloading from central: https://repo.maven.apache.org/maven2/org/jacoco/jacoco-maven-plugin/0.8.6/jacoco-maven-plugin-0.8.6.jar
+Downloaded from central: https://repo.maven.apache.org/maven2/org/jacoco/jacoco-maven-plugin/0.8.6/jacoco-maven-plugin-0.8.6.jar (53 kB at 1.9 MB/s)
+Downloading from central: https://repo.maven.apache.org/maven2/org/apache/maven/plugins/maven-resources-plugin/3.3.1/maven-resources-plugin-3.3.1.pom
+Downloaded from central: https://repo.maven.apache.org/maven2/org/apache/maven/plugins/maven-resources-plugin/3.3.1/maven-resources-plugin-3.3.1.pom (8.2 kB at 544 kB/s)
+...
+Downloaded from central: https://repo.maven.apache.org/maven2/org/codehaus/plexus/plexus-compiler-manager/2.13.0/plexus-compiler-manager-2.13.0.jar (4.7 kB at 36 kB/s)
+Downloaded from central: https://repo.maven.apache.org/maven2/org/codehaus/plexus/plexus-compiler-javac/2.13.0/plexus-compiler-javac-2.13.0.jar (23 kB at 163 kB/s)
+Downloaded from central: https://repo.maven.apache.org/maven2/org/codehaus/plexus/plexus-utils/3.5.0/plexus-utils-3.5.0.jar (267 kB at 1.6 MB/s)
+[INFO] Changes detected - recompiling the module! :source
+[INFO] Compiling 3 source files with javac [debug target 1.8] to target/classes
+[WARNING] bootstrap class path not set in conjunction with -source 8
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  3.933 s
+[INFO] Finished at: 2025-07-31T09:59:55Z
+[INFO] ------------------------------------------------------------------------
+```
+
+Then test:
+```sh
+make -f Makefile.ABCTech test
+```
+Example output:
+```sh
+docker run --rm -v /home/uih20178/Github/purdue-final-devops-project/ABCTechnologies:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn test
+[INFO] Scanning for projects...
+[INFO]
+[INFO] ----------------------< com.abc:ABCtechnologies >-----------------------
+[INFO] Building RetailModule 1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ war ]---------------------------------
+Downloading from central: https://repo.maven.apache.org/maven2/org/jacoco/jacoco-maven-plugin/0.8.6/jacoco-maven-plugin-0.8.6.pom
+Downloaded from central: https://repo.maven.apache.org/maven2/org/jacoco/jacoco-maven-plugin/0.8.6/jacoco-maven-plugin-0.8.6.pom (4.4 kB at 17 kB/s)
+Downloading from central: https://repo.maven.apache.org/maven2/org/jacoco/org.jacoco.build/0.8.6/org.jacoco.build-0.8.6.pom
+Downloaded from central: https://repo.maven.apache.org/maven2/org/jacoco/org.jacoco.build/0.8.6/org.jacoco.build-0.8.6.pom (42 kB at 1.1 MB/s)
+...
+Downloaded from central: https://repo.maven.apache.org/maven2/org/apache/maven/surefire/common-junit3/3.2.2/common-junit3-3.2.2.jar (12 kB at 918 kB/s)
+Downloaded from central: https://repo.maven.apache.org/maven2/org/apache/maven/surefire/common-junit4/3.2.2/common-junit4-3.2.2.jar (26 kB at 2.0 MB/s)
+Downloaded from central: https://repo.maven.apache.org/maven2/org/apache/maven/surefire/common-java5/3.2.2/common-java5-3.2.2.jar (18 kB at 878 kB/s)
+[INFO]
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.abc.dataAccessObject.ProductImpTest
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.041 s -- in com.abc.dataAccessObject.ProductImpTest
+[INFO]
+[INFO] Results:
+[INFO]
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
+[INFO]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  9.176 s
+[INFO] Finished at: 2025-07-31T10:01:07Z
+[INFO] ------------------------------------------------------------------------
+```
+
+Then package:
+```sh
+make -f Makefile.ABCTech package
+```
+Example output:
+```sh
+docker run --rm -v /home/uih20178/Github/purdue-final-devops-project/ABCTechnologies:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn package
+[INFO] Scanning for projects...
+[INFO]
+[INFO] ----------------------< com.abc:ABCtechnologies >-----------------------
+[INFO] Building RetailModule 1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ war ]---------------------------------
+Downloading from central: https://repo.maven.apache.org/maven2/org/jacoco/jacoco-maven-plugin/0.8.6/jacoco-maven-plugin-0.8.6.pom
+Downloaded from central: https://repo.maven.apache.org/maven2/org/jacoco/jacoco-maven-plugin/0.8.6/jacoco-maven-plugin-0.8.6.pom (4.4 kB at 16 kB/s)
+Downloading from central: https://repo.maven.apache.org/maven2/org/jacoco/org.jacoco.build/0.8.6/org.jacoco.build-0.8.6.pom
+Downloaded from central: https://repo.maven.apache.org/maven2/org/jacoco/org.jacoco.build/0.8.6/org.jacoco.build-0.8.6.pom (42 kB at 1.0 MB/s)
+Downloading from central: https://repo.maven.apache.org/maven2/org/jacoco/jacoco-maven-plugin/0.8.6/jacoco-maven-plugin-0.8.6.jar
+Downloaded from central: https://repo.maven.apache.org/maven2/org/jacoco/jacoco-maven-plugin/0.8.6/jacoco-maven-plugin-0.8.6.jar (53 kB at 1.1 MB/s)
+...
+Downloaded from central: https://repo.maven.apache.org/maven2/org/apache/maven/shared/maven-mapping/3.0.0/maven-mapping-3.0.0.jar (11 kB at 82 kB/s)
+Downloaded from central: https://repo.maven.apache.org/maven2/com/thoughtworks/xstream/xstream/1.4.10/xstream-1.4.10.jar (590 kB at 3.8 MB/s)
+[INFO] Packaging webapp
+[INFO] Assembling webapp [ABCtechnologies] in [/app/target/ABCtechnologies-1.0]
+[INFO] Processing war project
+[INFO] Copying webapp resources [/app/src/main/webapp]
+[INFO] Webapp assembled in [42 msecs]
+[INFO] Building war: /app/target/ABCtechnologies-1.0.war
+[INFO]
+[INFO] --- jacoco:0.8.6:report (jacoco-site) @ ABCtechnologies ---
+[INFO] Loading execution data file /app/target/jacoco.exec
+[INFO] Analyzed bundle 'RetailModule' with 2 classes
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  7.866 s
+[INFO] Finished at: 2025-07-31T11:42:41Z
+[INFO] ------------------------------------------------------------------------
+```
+
+Then try out the clean:
+
+```sh
+make -f Makefile.ABCTech clean
+```
+Example output:
+```sh
+docker run --rm -v /home/uih20178/Github/purdue-final-devops-project/ABCTechnologies:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean
+[INFO] Scanning for projects...
+[INFO]
+[INFO] ----------------------< com.abc:ABCtechnologies >-----------------------
+[INFO] Building RetailModule 1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ war ]---------------------------------
+Downloading from central: https://repo.maven.apache.org/maven2/org/jacoco/jacoco-maven-plugin/0.8.6/jacoco-maven-plugin-0.8.6.pom
+Downloaded from central: https://repo.maven.apache.org/maven2/org/jacoco/jacoco-maven-plugin/0.8.6/jacoco-maven-plugin-0.8.6.pom (4.4 kB at 20 kB/s)
+Downloading from central: https://repo.maven.apache.org/maven2/org/jacoco/org.jacoco.build/0.8.6/org.jacoco.build-0.8.6.pom
+...
+Downloading from central: https://repo.maven.apache.org/maven2/commons-io/commons-io/2.6/commons-io-2.6.jar
+Downloaded from central: https://repo.maven.apache.org/maven2/commons-io/commons-io/2.6/commons-io-2.6.jar (215 kB at 7.4 MB/s)
+[INFO] Deleting /app/target
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  0.928 s
+[INFO] Finished at: 2025-07-31T11:37:23Z
+[INFO] ------------------------------------------------------------------------
+```
+
+We can run a clean install too:
+```sh
+make -f Makefile.ABCTech clean install
+```
+Example output:
+```sh
+docker run --rm -v /home/uih20178/Github/purdue-final-devops-project/ABCTechnologies:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean
+[INFO] Scanning for projects...
+[INFO]
+[INFO] ----------------------< com.abc:ABCtechnologies >-----------------------
+[INFO] Building RetailModule 1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ war ]---------------------------------
+Downloading from central: https://repo.maven.apache.org/maven2/org/jacoco/jacoco-maven-plugin/0.8.6/jacoco-maven-plugin-0.8.6.pom
+Downloaded from central: https://repo.maven.apache.org/maven2/org/jacoco/jacoco-maven-plugin/0.8.6/jacoco-maven-plugin-0.8.6.pom (4.4 kB at 14 kB/s)
+...
+Downloaded from central: https://repo.maven.apache.org/maven2/org/codehaus/plexus/plexus-utils/3.1.0/plexus-utils-3.1.0.jar (262 kB at 1.7 MB/s)
+[INFO] Packaging webapp
+[INFO] Assembling webapp [ABCtechnologies] in [/app/target/ABCtechnologies-1.0]
+[INFO] Processing war project
+[INFO] Copying webapp resources [/app/src/main/webapp]
+[INFO] Webapp assembled in [48 msecs]
+[INFO] Building war: /app/target/ABCtechnologies-1.0.war
+[INFO]
+[INFO] --- jacoco:0.8.6:report (jacoco-site) @ ABCtechnologies ---
+[INFO] Loading execution data file /app/target/jacoco.exec
+[INFO] Analyzed bundle 'RetailModule' with 2 classes
+[INFO]
+[INFO] --- install:3.1.1:install (default-install) @ ABCtechnologies ---
+[INFO] Installing /app/pom.xml to /root/.m2/repository/com/abc/ABCtechnologies/1.0/ABCtechnologies-1.0.pom
+[INFO] Installing /app/target/ABCtechnologies-1.0.war to /root/.m2/repository/com/abc/ABCtechnologies/1.0/ABCtechnologies-1.0.war
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  7.499 s
+[INFO] Finished at: 2025-07-31T11:38:34Z
+[INFO] ------------------------------------------------------------------------
+```
+
+## Task 2
+Setup git repository and push the source code. Login to Jenkins
+1. create 3 jobs
+  - 0ne for compiling source code
+  - Second for testing source code
+  - Third for packing the code
+2. Setup CICD pipeline to execute the jobs created in step1
+3. Setup master-slave node to distribute the tasks in pipeline
+
+### Repository
+
+The repository is available at:
+https://github.com/hajnalmt/purdue-final-devops-project
