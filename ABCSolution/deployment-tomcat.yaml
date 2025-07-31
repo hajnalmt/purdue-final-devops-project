@@ -25,7 +25,7 @@ spec:
                 app: abc-tech-app
         spec:
             containers:
-                - image: hajnalmt/abctechnologies:latest
+                - image: hajnalmt/abctechnologies-tomcat:latest
                   name: app
 ---
 kind: Service

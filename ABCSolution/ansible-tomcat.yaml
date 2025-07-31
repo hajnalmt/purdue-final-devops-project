@@ -1,0 +1,50 @@
+- hosts: local
+  become: false
+  vars:
+    project_dir: "{{ lookup('env', 'PWD') }}"
+    image_name: "hajnalmt/abctechnologies-tomcat"
+    image_tag: "latest"
+    dockerfile_path: "{{ project_dir }}/ABCSolution/tomcat.Dockerfile"
+    build_context: "{{ project_dir }}/ABCTechnologies"
+    container_name: "abc-application"
+    k8s_yaml: "{{ project_dir }}/ABCSolution/deployment-tomcat.yaml"
+  tasks:
+    - name: Build Docker image for ABCTechnologies
+      community.docker.docker_image:
+        build:
+          path: "{{ build_context }}"
+          dockerfile: "{{ dockerfile_path }}"
+        name: "{{ image_name }}"
+        tag: "{{ image_tag }}"
+        push: false
+        source: build
+      register: build_result
+
+    - name: Show build result
+      debug:
+        var: build_result
+
+    - name: Start the container
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        image: "{{ image_name }}:{{ image_tag }}"
+        state: started
+        ports:
+          - "8080:8080"
+        restart_policy: always
+      register: container_result
+
+    - name: Show container result
+      debug:
+        var: container_result
+
+    - name: Apply all Kubernetes YAMLs in ABCSolution
+      shell: |
+        kubectl apply -f "{{ k8s_yaml }}" --namespace=abc
+      args:
+        executable: /bin/bash
+      register: k8s_apply_result
+
+    - name: Show kubectl apply result
+      debug:
+        var: k8s_apply_result.stdout_lines

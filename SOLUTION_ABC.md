@@ -2,6 +2,9 @@
 
 Instead of a remote server/aws account setup I opted to use a local k3d environment, because I can present every task properly this way too, and it won't require too much change to port it to an other cluster.
 
+The solution is hosted under https://github.com/hajnalmt/purdue-final-devops-project
+The solution in markdown https://github.com/hajnalmt/purdue-final-devops-project/blob/main/SOLUTION_ABC.md
+
 ## Local DevOps k3d Environment for ABC Technologies
 
 This part  describes local DevOps environment set up for the ABC Technologies CI/CD pipeline project, as specified in `README_ABC.md`. The environment is fully automated using a Makefile and leverages k3d (Kubernetes in Docker), Helm, and a suite of open-source DevOps tools. This environment is designed to be reproducible, versioned, and easy to use for all project tasks.
@@ -1058,7 +1061,9 @@ PLAY RECAP *********************************************************************
 localhost                  : ok=7    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
 ```
 
-## End
+Since I ran into docker rate-limit issues all the time, I created an `ansible-tomcat.yaml` and a `deployment-tomcat.yaml` too which the deploys the minified image.
+
+### Deployed service
 
 The container will start at localhost:
 ![image](./assets/ABC_localhost_tomcat.png)
@@ -1066,5 +1071,49 @@ The container will start at localhost:
 
 And in our kubernetes cluster:
 ```sh
-./bin/kubectl
+./bin/kubectl get services,deployments,pods,ingresses -n abc
+```
+
+Example output:
+```sh
+NAME                       TYPE       CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
+service/abc-tech-service   NodePort   10.43.130.229   <none>        80:30080/TCP   39m
+
+NAME                           READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/abc-tech-dep   2/2     2            0           39m
+
+NAME                                READY   STATUS    RESTARTS   AGE
+pod/abc-tech-dep-79cf47ddc7-667xr   1/1     Running   0          34s
+pod/abc-tech-dep-79cf47ddc7-b9pd9   1/1     Running   0          34s
+
+NAME                                         CLASS    HOSTS                      ADDRESS                            PORTS     AGE
+ingress.networking.k8s.io/abc-tech-ingress   <none>   abc.abc.127.0.0.1.nip.io   100.64.4.3,100.64.4.4,100.64.4.5   80, 443   39m
+```
+
+We can visit the secure https://abc.abc.127.0.0.1.nip.io endpoint now.
+![image](./assets/ABC_cluster_endpoint.png)
+
+## Task 5
+Using Prometheus monitor the resources like CPU utilization: Total Usage, Usage per core,
+usage breakdown, Memory, Network on the instance by providing the end points in local host.
+Install node exporter and add URL to target in Prometheus
+
+On our local kubernetes cluster grafana and prometheus is installed already with node-exporter.
+https://prometheus.127.0.0.1.nip.io/
+
+```bash
+kubectl get pods -n monitoring
+```
+
+Example output:
+```bash
+NAME                                                 READY   STATUS    RESTARTS   AGE
+grafana-bdcf4f54d-mbm7j                              1/1     Running   0          35h
+prometheus-alertmanager-0                            1/1     Running   0          14h
+prometheus-kube-state-metrics-7fb455bd77-t54f5       1/1     Running   0          35h
+prometheus-prometheus-node-exporter-cs22z            1/1     Running   0          35h
+prometheus-prometheus-node-exporter-rhmxn            1/1     Running   0          35h
+prometheus-prometheus-node-exporter-vm89g            1/1     Running   0          35h
+prometheus-prometheus-pushgateway-85f98dc7b7-pktbc   1/1     Running   0          35h
+prometheus-server-7588b78f9-wlmj4                    2/2     Running   0          34h
 ```
