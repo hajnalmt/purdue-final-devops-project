@@ -117,6 +117,10 @@ create-cluster:
 		  --wait; \
 	}
 
+stop-cluster:
+	@echo "Stopping k3d cluster '$(K3D_CLUSTER_NAME)'..."
+	@$(K3D_BIN) cluster stop $(K3D_CLUSTER_NAME) || echo "Cluster '$(K3D_CLUSTER_NAME)' is not running."
+
 delete-cluster:
 	@echo "Deleting k3d cluster and registry..."
 	-$(K3D_BIN) cluster delete $(K3D_CLUSTER_NAME)
