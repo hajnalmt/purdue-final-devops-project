@@ -67,7 +67,8 @@ install-ansible:
 		python3 -m pip install --user pipx -i $(PYPI_INDEX_URL) || true; \
 		python3 -m pipx ensurepath || true; \
 		pipx install --force ansible==$(ANSIBLE_VERSION) --index-url $(PYPI_INDEX_URL) || true; \
-		ln -sf $$(pipx which ansible) $(ANSIBLE_BIN); \
+		ln -sf $$(pipx list --json | jq -r '.venvs.ansible.metadata.main_package.app_paths_of_dependencies["ansible-core"][] | select(."__Path__" | test("ansible$")) | ."__Path__"') $(BIN_DIR)/ansible; \
+		ln -sf $$(pipx list --json | jq -r '.venvs.ansible.metadata.main_package.app_paths_of_dependencies["ansible-core"][] | select(."__Path__" | test("ansible-playbook$")) | ."__Path__"') $(BIN_DIR)/ansible-playbook; \
 	else \
 		echo "ansible already installed at $(ANSIBLE_BIN)"; \
 	fi
@@ -196,23 +197,4 @@ deploy-all: \
 
 clean: delete-cluster
 	@echo "Cleanup complete."
-
-# =====================
-# ABCSolution Docker Images
-# =====================
-
-docker-build-tomcat:
-	docker build -f ABCSolution/tomcat.Dockerfile -t abctech-tomcat:latest .
-
-docker-build-ubuntu:
-	docker build -f ABCSolution/ubuntu.dockerfile -t abctech-ubuntu-tomcat:latest .
-
-docker-run-tomcat:
-	docker run --rm -p 8080:8080 abctech-tomcat:latest
-
-docker-run-ubuntu:
-	docker run --rm -p 8080:8080 abctech-ubuntu-tomcat:latest
-
-include Makefile.ABCTech
-
 

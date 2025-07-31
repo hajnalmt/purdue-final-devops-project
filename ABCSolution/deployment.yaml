@@ -1,3 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: abc
+---
 kind: Deployment
 apiVersion: apps/v1
 metadata:
@@ -20,7 +25,7 @@ spec:
                 app: abc-tech-app
         spec:
             containers:
-                - image: hajnalmt/abctechnologies:test
+                - image: hajnalmt/abctechnologies:latest
                   name: app
 ---
 kind: Service

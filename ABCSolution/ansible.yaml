@@ -1,4 +1,4 @@
-- hosts: localhost
+- hosts: local
   become: false
   vars:
     project_dir: "{{ lookup('env', 'PWD') }}"
@@ -7,7 +7,7 @@
     dockerfile_path: "{{ project_dir }}/ABCSolution/Dockerfile"
     build_context: "{{ project_dir }}/ABCTechnologies"
     container_name: "abc-application"
-    k8s_yaml_dir: "{{ project_dir }}/ABCSolution"
+    k8s_yaml: "{{ project_dir }}/ABCSolution/deployment.yaml"
   tasks:
     - name: Build Docker image for ABCTechnologies
       community.docker.docker_image:
@@ -40,9 +40,7 @@
 
     - name: Apply all Kubernetes YAMLs in ABCSolution
       shell: |
-        for f in {{ k8s_yaml_dir }}/*.yaml; do
-          kubectl apply -f "$f" --namespace=abc
-        done
+        kubectl apply -f "{{ k8s_yaml }}" --namespace=abc
       args:
         executable: /bin/bash
       register: k8s_apply_result

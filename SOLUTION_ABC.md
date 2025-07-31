@@ -504,7 +504,61 @@ image
 There is a Dockerfile under the ABCSolution directory based on the classes.
 Alternatively a minified tomcat Dockerfile (tomcat.Dockerfile) and a minified Ubuntu Dockerfile (ubuntu.Dockerfile) can be used.
 
-They  will result in nearly the same image.
+Dockerfile:
+
+```Dockerfile
+FROM docker.io/library/ubuntu:22.04
+RUN apt-get -y update && apt-get -y upgrade
+RUN apt-get -y install openjdk-17-jdk wget
+RUN mkdir /usr/local/tomcat
+ADD https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.107/bin/apache-tomcat-9.0.107.tar.gz  /tmp/apache-tomcat-9.0.107.tar.gz
+RUN cd /tmp &&  tar xvfz apache-tomcat-9.0.107.tar.gz
+RUN cp -Rv /tmp/apache-tomcat-9.0.107/* /usr/local/tomcat/
+COPY **/*.war /usr/local/tomcat/webapps/
+EXPOSE 8080
+CMD /usr/local/tomcat/bin/catalina.sh run
+```
+
+tomcat.Dockerfile:
+```Dockerfile
+FROM tomcat:9.0.107-jdk17-temurin
+
+RUN rm -rf /usr/local/tomcat/webapps/*
+
+COPY **/*.war /usr/local/tomcat/webapps/
+
+EXPOSE 8080
+
+CMD ["catalina.sh", "run"]
+```
+
+ubuntu.Dockerfile:
+```Dockerfile
+FROM ubuntu:22.04
+
+ARG TOMCAT_VERSION=9.0.107
+
+RUN apt-get update && \
+    apt-get -y upgrade && \
+    apt-get -y install openjdk-17-jdk wget curl && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /usr/local/tomcat && \
+    wget -q https://dlcdn.apache.org/tomcat/tomcat-9/v${TOMCAT_VERSION}/bin/apache-tomcat-${TOMCAT_VERSION}.tar.gz -O /tmp/tomcat.tar.gz && \
+    tar xzf /tmp/tomcat.tar.gz -C /usr/local/tomcat --strip-components=1 && \
+    rm /tmp/tomcat.tar.gz
+
+COPY **/*.war /usr/local/tomcat/webapps/
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:8080/ || exit 1
+
+CMD ["/usr/local/tomcat/bin/catalina.sh", "run"]
+```
+
+They will result in nearly the same image.
 
 ### Jenkins Build step
 Build and Publish the docker images
@@ -519,6 +573,498 @@ If everything is alright the image is pushed and ready:
 
 It's under the "hajnalmt/abctechnologies:latest" tag.
 
-### Ansible
+## Task 4
+Task 4: Integrate Docker host with Ansible. Write ansible playbook to create Image and create
+continuer. Integrate Ansible with Jenkins. Deploy ansible playbook. CI/CD job to build code on
+ansible and deploy it on docker container
+a. Deploy Artifacts on Kubernetes
+a. Write pod, service, and deployment manifest file
+b. Integrate Kubernetes with ansible
+c. Ansible playbook to create deployment and service
 
+### Ansible playbook created
+There is an ansible playbook ready to run which builds the image, starts the container and applyies the deployment manifests in the abc namespace.
 
+The playbook is under ABCSolution/ansible.yaml:
+```yaml
+- hosts: local
+  become: false
+  vars:
+    project_dir: "{{ lookup('env', 'PWD') }}"
+    image_name: "hajnalmt/abctechnologies"
+    image_tag: "latest"
+    dockerfile_path: "{{ project_dir }}/ABCSolution/Dockerfile"
+    build_context: "{{ project_dir }}/ABCTechnologies"
+    container_name: "abc-application"
+    k8s_yaml: "{{ project_dir }}/ABCSolution/deployment.yaml"
+  tasks:
+    - name: Build Docker image for ABCTechnologies
+      community.docker.docker_image:
+        build:
+          path: "{{ build_context }}"
+          dockerfile: "{{ dockerfile_path }}"
+        name: "{{ image_name }}"
+        tag: "{{ image_tag }}"
+        push: false
+        source: build
+      register: build_result
+
+    - name: Show build result
+      debug:
+        var: build_result
+
+    - name: Start the container
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        image: "{{ image_name }}:{{ image_tag }}"
+        state: started
+        ports:
+          - "8080:8080"
+        restart_policy: always
+      register: container_result
+
+    - name: Show container result
+      debug:
+        var: container_result
+
+    - name: Apply all Kubernetes YAMLs in ABCSolution
+      shell: |
+        kubectl apply -f "{{ k8s_yaml }}" --namespace=abc
+      args:
+        executable: /bin/bash
+      register: k8s_apply_result
+
+    - name: Show kubectl apply result
+      debug:
+        var: k8s_apply_result.stdout_lines
+```
+
+The kubernetes service manifests are containing an additional namespace and ingress related settings too. See ABCSolution/deployment.yaml
+
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: abc
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  namespace: abc
+  name: abc-tech-dep
+spec:
+    replicas: 2
+    minReadySeconds: 45
+    strategy:
+        type: RollingUpdate
+        rollingUpdate:
+            maxUnavailable: 1
+            maxSurge: 2
+    selector:
+        matchLabels:
+            app: abc-tech-app
+    template:
+        metadata:
+            labels:
+                app: abc-tech-app
+        spec:
+            containers:
+                - image: hajnalmt/abctechnologies:test
+                  name: app
+---
+kind: Service
+apiVersion: v1
+metadata:
+    name: abc-tech-service
+    namespace: abc
+spec:
+    type: NodePort
+    selector:
+        app: abc-tech-app
+    ports:
+        - port: 80 #cluster port
+          targetPort: 8080 #container image port
+          nodePort: 30080 #node port
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: abc-tech-ingress
+  namespace: abc
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    cert-manager.io/cluster-issuer: selfsigned-issuer
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+spec:
+  tls:
+    - hosts:
+        - abc.abc.127.0.0.1.nip.io
+      secretName: abc-tech-tls
+  rules:
+    - host: abc.abc.127.0.0.1.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: abc-tech-service
+                port:
+                  number: 80
+```
+
+By executing the ansible playbook:
+
+```bash
+./bin/ansible-playbook -i ABCSolution/hosts ABCSolution/ansible.yaml
+```
+or by invoking the make ansible target
+
+```bash
+make ansible
+```
+
+The playbook will deploy everything:
+```bash
+PLAY [local] ***********************************************************************************************************************************************
+
+TASK [Gathering Facts] *************************************************************************************************************************************
+ok: [localhost]
+
+TASK [Build Docker image for ABCTechnologies] **************************************************************************************************************
+ok: [localhost]
+
+TASK [Show build result] ***********************************************************************************************************************************
+ok: [localhost] => {
+    "build_result": {
+        "actions": [],
+        "changed": false,
+        "failed": false,
+        "image": {
+            "Architecture": "amd64",
+            "Author": "",
+            "Comment": "buildkit.dockerfile.v0",
+            "Config": {
+                "ArgsEscaped": true,
+                "Cmd": [
+                    "/bin/sh",
+                    "-c",
+                    "/usr/local/tomcat/bin/catalina.sh run"
+                ],
+                "Entrypoint": null,
+                "Env": [
+                    "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+                ],
+                "ExposedPorts": {
+                    "8080/tcp": {}
+                },
+                "Labels": {
+                    "org.opencontainers.image.ref.name": "ubuntu",
+                    "org.opencontainers.image.version": "22.04"
+                },
+                "OnBuild": null,
+                "User": "",
+                "Volumes": null,
+                "WorkingDir": ""
+            },
+            "Created": "2025-07-31T23:23:46.903394362+02:00",
+            "DockerVersion": "",
+            "GraphDriver": {
+                "Data": {
+                    "LowerDir": "/var/lib/docker/overlay2/0zu1lj15xm8bg2fcqd42x04z9/diff:/var/lib/docker/overlay2/jmyeu5gba2kmcxrs23vrgztbm/diff:/var/lib/docker/overlay2/x3w0d7qd4sh1x0x9ns3efq81s/diff:/var/lib/docker/overlay2/kwv7hd4lv7n8fm0155mmw48r5/diff:/var/lib/docker/overlay2/srk9oc6ixnvvk4mdukzwzml6m/diff:/var/lib/docker/overlay2/hcj3b51i0b47k2gu63e3dfgg5/diff:/var/lib/docker/overlay2/f26e38621272e3f2f166676f96029fc4439b6d0a146f08bfb7cb2bb3a9e68e4b/diff",
+                    "MergedDir": "/var/lib/docker/overlay2/x4e3y5gx8cciqq2t2xrqfr3sc/merged",
+                    "UpperDir": "/var/lib/docker/overlay2/x4e3y5gx8cciqq2t2xrqfr3sc/diff",
+                    "WorkDir": "/var/lib/docker/overlay2/x4e3y5gx8cciqq2t2xrqfr3sc/work"
+                },
+                "Name": "overlay2"
+            },
+            "Id": "sha256:dcd5054ff8afb2ffe9116e81b70887ad0c77d2a518941c0e17f998490d93a348",
+            "Metadata": {
+                "LastTagTime": "2025-07-31T23:23:46.951863912+02:00"
+            },
+            "Os": "linux",
+            "Parent": "",
+            "RepoDigests": [
+                "hajnalmt/abctechnologies@sha256:3e6abbb2844e8578e0cdfa06f644442d82a3c747bf9ed3a8cfbfb877e69dfcb9"
+            ],
+            "RepoTags": [
+                "hajnalmt/abctechnologies:latest"
+            ],
+            "RootFS": {
+                "Layers": [
+                    "sha256:f862e1968e4b4c3c3af141e37d2ec22b19ec0fd50d6a8aaf683de6729e296226",
+                    "sha256:fbfc77a149b98b397e04665c10b7a0bfcc27bf7c3d5e83e9c6caca5e2b9127f1",
+                    "sha256:79aecb57f91b1bc1ab495da8bae0b3fbc782c36049484477c51279e95c893f71",
+                    "sha256:aaed7b767d496ed96a879aa8254fea2bd9335dd339025ce5b2ceb612a68b1559",
+                    "sha256:98913b3e5abee22ebb0854d357e48ab7207064caf12e29be7d28a24331b7b337",
+                    "sha256:0b5e53c6beb1b99686b6fd197527696fc9d77df6589af64afd1b2173b4c4f651",
+                    "sha256:c8b3eb7c7f8c15f94b8a688b3e6555d2e77ac3ecd379f3899f180d4959677abf",
+                    "sha256:0d8d67cd96f34a46e9832f32af7cc76e364d8dc725e1c4fb0695a7cb164fd359"
+                ],
+                "Type": "layers"
+            },
+            "Size": 838468755
+        }
+    }
+}
+
+TASK [Start the container] *********************************************************************************************************************************
+changed: [localhost]
+
+TASK [Show container result] *******************************************************************************************************************************
+ok: [localhost] => {
+    "container_result": {
+        "changed": true,
+        "container": {
+            "AppArmorProfile": "",
+            "Args": [
+                "-c",
+                "/usr/local/tomcat/bin/catalina.sh run"
+            ],
+            "Config": {
+                "AttachStderr": true,
+                "AttachStdin": false,
+                "AttachStdout": true,
+                "Cmd": [
+                    "/bin/sh",
+                    "-c",
+                    "/usr/local/tomcat/bin/catalina.sh run"
+                ],
+                "Domainname": "",
+                "Entrypoint": null,
+                "Env": [
+                    "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+                ],
+                "ExposedPorts": {
+                    "8080/tcp": {}
+                },
+                "Hostname": "e7249262196d",
+                "Image": "hajnalmt/abctechnologies:latest",
+                "Labels": {
+                    "org.opencontainers.image.ref.name": "ubuntu",
+                    "org.opencontainers.image.version": "22.04"
+                },
+                "OnBuild": null,
+                "OpenStdin": false,
+                "StdinOnce": false,
+                "Tty": false,
+                "User": "",
+                "Volumes": null,
+                "WorkingDir": ""
+            },
+            "Created": "2025-07-31T22:49:25.010035945Z",
+            "Driver": "overlay2",
+            "ExecIDs": null,
+            "GraphDriver": {
+                "Data": {
+                    "ID": "e7249262196dde05a4aa077e0fc95d3a6a7d542c07bc7659879b234e4b0fb813",
+                    "LowerDir": "/var/lib/docker/overlay2/ef1fbc7d88243c0ed9ee7a328ed1482006c5ec6caba69ef4e71712015d592f00-init/diff:/var/lib/docker/overlay2/x4e3y5gx8cciqq2t2xrqfr3sc/diff:/var/lib/docker/overlay2/0zu1lj15xm8bg2fcqd42x04z9/diff:/var/lib/docker/overlay2/jmyeu5gba2kmcxrs23vrgztbm/diff:/var/lib/docker/overlay2/x3w0d7qd4sh1x0x9ns3efq81s/diff:/var/lib/docker/overlay2/kwv7hd4lv7n8fm0155mmw48r5/diff:/var/lib/docker/overlay2/srk9oc6ixnvvk4mdukzwzml6m/diff:/var/lib/docker/overlay2/hcj3b51i0b47k2gu63e3dfgg5/diff:/var/lib/docker/overlay2/f26e38621272e3f2f166676f96029fc4439b6d0a146f08bfb7cb2bb3a9e68e4b/diff",
+                    "MergedDir": "/var/lib/docker/overlay2/ef1fbc7d88243c0ed9ee7a328ed1482006c5ec6caba69ef4e71712015d592f00/merged",
+                    "UpperDir": "/var/lib/docker/overlay2/ef1fbc7d88243c0ed9ee7a328ed1482006c5ec6caba69ef4e71712015d592f00/diff",
+                    "WorkDir": "/var/lib/docker/overlay2/ef1fbc7d88243c0ed9ee7a328ed1482006c5ec6caba69ef4e71712015d592f00/work"
+                },
+                "Name": "overlay2"
+            },
+            "HostConfig": {
+                "AutoRemove": false,
+                "Binds": null,
+                "BlkioDeviceReadBps": null,
+                "BlkioDeviceReadIOps": null,
+                "BlkioDeviceWriteBps": null,
+                "BlkioDeviceWriteIOps": null,
+                "BlkioWeight": 0,
+                "BlkioWeightDevice": null,
+                "CapAdd": null,
+                "CapDrop": null,
+                "Cgroup": "",
+                "CgroupParent": "",
+                "CgroupnsMode": "host",
+                "ConsoleSize": [
+                    0,
+                    0
+                ],
+                "ContainerIDFile": "",
+                "CpuCount": 0,
+                "CpuPercent": 0,
+                "CpuPeriod": 0,
+                "CpuQuota": 0,
+                "CpuRealtimePeriod": 0,
+                "CpuRealtimeRuntime": 0,
+                "CpuShares": 0,
+                "CpusetCpus": "",
+                "CpusetMems": "",
+                "DeviceCgroupRules": null,
+                "DeviceRequests": null,
+                "Devices": null,
+                "Dns": null,
+                "DnsOptions": null,
+                "DnsSearch": null,
+                "ExtraHosts": null,
+                "GroupAdd": null,
+                "IOMaximumBandwidth": 0,
+                "IOMaximumIOps": 0,
+                "IpcMode": "private",
+                "Isolation": "",
+                "Links": null,
+                "LogConfig": {
+                    "Config": {},
+                    "Type": "json-file"
+                },
+                "MaskedPaths": [
+                    "/proc/asound",
+                    "/proc/acpi",
+                    "/proc/interrupts",
+                    "/proc/kcore",
+                    "/proc/keys",
+                    "/proc/latency_stats",
+                    "/proc/timer_list",
+                    "/proc/timer_stats",
+                    "/proc/sched_debug",
+                    "/proc/scsi",
+                    "/sys/firmware",
+                    "/sys/devices/virtual/powercap"
+                ],
+                "Memory": 0,
+                "MemoryReservation": 0,
+                "MemorySwap": 0,
+                "MemorySwappiness": null,
+                "NanoCpus": 0,
+                "NetworkMode": "bridge",
+                "OomKillDisable": false,
+                "OomScoreAdj": 0,
+                "PidMode": "",
+                "PidsLimit": null,
+                "PortBindings": {
+                    "8080/tcp": [
+                        {
+                            "HostIp": "0.0.0.0",
+                            "HostPort": "8080"
+                        }
+                    ]
+                },
+                "Privileged": false,
+                "PublishAllPorts": false,
+                "ReadonlyPaths": [
+                    "/proc/bus",
+                    "/proc/fs",
+                    "/proc/irq",
+                    "/proc/sys",
+                    "/proc/sysrq-trigger"
+                ],
+                "ReadonlyRootfs": false,
+                "RestartPolicy": {
+                    "MaximumRetryCount": 0,
+                    "Name": "always"
+                },
+                "Runtime": "runc",
+                "SecurityOpt": null,
+                "ShmSize": 67108864,
+                "UTSMode": "",
+                "Ulimits": null,
+                "UsernsMode": "",
+                "VolumeDriver": "",
+                "VolumesFrom": null
+            },
+            "HostnamePath": "/var/lib/docker/containers/e7249262196dde05a4aa077e0fc95d3a6a7d542c07bc7659879b234e4b0fb813/hostname",
+            "HostsPath": "/var/lib/docker/containers/e7249262196dde05a4aa077e0fc95d3a6a7d542c07bc7659879b234e4b0fb813/hosts",
+            "Id": "e7249262196dde05a4aa077e0fc95d3a6a7d542c07bc7659879b234e4b0fb813",
+            "Image": "sha256:dcd5054ff8afb2ffe9116e81b70887ad0c77d2a518941c0e17f998490d93a348",
+            "LogPath": "/var/lib/docker/containers/e7249262196dde05a4aa077e0fc95d3a6a7d542c07bc7659879b234e4b0fb813/e7249262196dde05a4aa077e0fc95d3a6a7d542c07bc7659879b234e4b0fb813-json.log",
+            "MountLabel": "",
+            "Mounts": [],
+            "Name": "/abc-application",
+            "NetworkSettings": {
+                "Bridge": "",
+                "EndpointID": "f034b60d40c0e14c4304fb3455ee5a1c5685e3ecad96f468a81a062d954fe42c",
+                "Gateway": "100.64.0.1",
+                "GlobalIPv6Address": "",
+                "GlobalIPv6PrefixLen": 0,
+                "HairpinMode": false,
+                "IPAddress": "100.64.0.4",
+                "IPPrefixLen": 24,
+                "IPv6Gateway": "",
+                "LinkLocalIPv6Address": "",
+                "LinkLocalIPv6PrefixLen": 0,
+                "MacAddress": "ee:0e:6f:b7:e9:a0",
+                "Networks": {
+                    "bridge": {
+                        "Aliases": null,
+                        "DNSNames": null,
+                        "DriverOpts": null,
+                        "EndpointID": "f034b60d40c0e14c4304fb3455ee5a1c5685e3ecad96f468a81a062d954fe42c",
+                        "Gateway": "100.64.0.1",
+                        "GlobalIPv6Address": "",
+                        "GlobalIPv6PrefixLen": 0,
+                        "GwPriority": 0,
+                        "IPAMConfig": null,
+                        "IPAddress": "100.64.0.4",
+                        "IPPrefixLen": 24,
+                        "IPv6Gateway": "",
+                        "Links": null,
+                        "MacAddress": "ee:0e:6f:b7:e9:a0",
+                        "NetworkID": "4f9698456a4cf7918742b02157ad8e9fb6520c4a86352a32ae4784e16c832e2c"
+                    }
+                },
+                "Ports": {
+                    "8080/tcp": [
+                        {
+                            "HostIp": "0.0.0.0",
+                            "HostPort": "8080"
+                        }
+                    ]
+                },
+                "SandboxID": "535d516c806e73da3473bd8dc11c65653154ad4a6752206dbc831aec87489f6d",
+                "SandboxKey": "/var/run/docker/netns/535d516c806e",
+                "SecondaryIPAddresses": null,
+                "SecondaryIPv6Addresses": null
+            },
+            "Path": "/bin/sh",
+            "Platform": "linux",
+            "ProcessLabel": "",
+            "ResolvConfPath": "/var/lib/docker/containers/e7249262196dde05a4aa077e0fc95d3a6a7d542c07bc7659879b234e4b0fb813/resolv.conf",
+            "RestartCount": 0,
+            "State": {
+                "Dead": false,
+                "Error": "",
+                "ExitCode": 0,
+                "FinishedAt": "0001-01-01T00:00:00Z",
+                "OOMKilled": false,
+                "Paused": false,
+                "Pid": 561346,
+                "Restarting": false,
+                "Running": true,
+                "StartedAt": "2025-07-31T22:49:25.089692725Z",
+                "Status": "running"
+            }
+        },
+        "failed": false
+    }
+}
+
+TASK [Apply all Kubernetes YAMLs in ABCSolution] ***********************************************************************************************************
+changed: [localhost]
+
+TASK [Show kubectl apply result] ***************************************************************************************************************************
+ok: [localhost] => {
+    "k8s_apply_result.stdout_lines": [
+        "namespace/abc created",
+        "deployment.apps/abc-tech-dep created",
+        "service/abc-tech-service created",
+        "ingress.networking.k8s.io/abc-tech-ingress created"
+    ]
+}
+
+PLAY RECAP *************************************************************************************************************************************************
+localhost                  : ok=7    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+```
+
+## End
+
+The container will start at localhost:
+![image](./assets/ABC_localhost_tomcat.png)
+![image](./assets/ABC_localhost_application.png)
+
+And in our kubernetes cluster:
+```sh
+./bin/kubectl
+```

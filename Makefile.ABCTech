@@ -39,3 +39,10 @@ docker-run-tomcat:
 
 docker-run-ubuntu:
 	docker run --rm -p 8080:8080 hajnalmt/abctechnologies-ubuntu:latest
+
+# =====================
+# ABCSolution Ansible target
+# =====================
+
+ansible:
+	./bin/ansible-playbook -i ABCSolution/hosts ABCSolution/ansible.yaml
