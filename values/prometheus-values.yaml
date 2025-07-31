@@ -1,0 +1,21 @@
+server:
+  ingress:
+    enabled: true
+    hosts:
+      - prometheus.127.0.0.1.nip.io
+    ingressClassName: traefik
+    paths:
+      - /
+    annotations:
+      kubernetes.io/ingress.class: traefik
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      cert-manager.io/cluster-issuer: "selfsigned-issuer"
+    tls:
+      - hosts:
+          - prometheus.127.0.0.1.nip.io
+        secretName: prometheus-tls
+  persistentVolume:
+    size: 1Gi
+alertmanager:
+  persistentVolume:
+    size: 1Gi

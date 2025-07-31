@@ -1,0 +1,15 @@
+controller:
+  ingress:
+    enabled: true
+    hostName: jenkins.127.0.0.1.nip.io
+    ingressClassName: traefik
+    annotations:
+      kubernetes.io/ingress.class: traefik
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      cert-manager.io/cluster-issuer: "selfsigned-issuer"
+    tls:
+      - hosts:
+          - jenkins.127.0.0.1.nip.io
+        secretName: jenkins-tls
+persistence:
+  size: 1Gi
