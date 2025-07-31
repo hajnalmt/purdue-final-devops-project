@@ -16,3 +16,26 @@ clean:
 
 install:
 	docker run --rm -v $(PWD)/ABCTechnologies:/app -w /app maven:3.9.6-eclipse-temurin-17 mvn clean install
+
+
+# =====================
+# ABCSolution Docker Images
+# =====================
+
+docker-build:
+	docker build -f ABCSolution/Dockerfile -t hajnalmt/abctechnologies:latest ./ABCTechnologies
+
+docker-build-tomcat:
+	docker build -f ABCSolution/tomcat.Dockerfile -t hajnalmt/abctechnologies-tomcat:latest ./ABCTechnologies
+
+docker-build-ubuntu:
+	docker build -f ABCSolution/ubuntu.dockerfile -t hajnalmt/abctechnologies-ubuntu:latest ./ABCTechnologies
+
+docker-run:
+    docker run --rm -p 8080:8080 hajnalmt/abctechnologies:latest
+
+docker-run-tomcat:
+	docker run --rm -p 8080:8080 hajnalmt/abctechnologies-tomcat:latest
+
+docker-run-ubuntu:
+	docker run --rm -p 8080:8080 hajnalmt/abctechnologies-ubuntu:latest

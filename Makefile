@@ -197,6 +197,22 @@ deploy-all: \
 clean: delete-cluster
 	@echo "Cleanup complete."
 
+# =====================
+# ABCSolution Docker Images
+# =====================
+
+docker-build-tomcat:
+	docker build -f ABCSolution/tomcat.Dockerfile -t abctech-tomcat:latest .
+
+docker-build-ubuntu:
+	docker build -f ABCSolution/ubuntu.dockerfile -t abctech-ubuntu-tomcat:latest .
+
+docker-run-tomcat:
+	docker run --rm -p 8080:8080 abctech-tomcat:latest
+
+docker-run-ubuntu:
+	docker run --rm -p 8080:8080 abctech-ubuntu-tomcat:latest
+
 include Makefile.ABCTech
 
 

@@ -1,9 +1,8 @@
 kind: Deployment
 apiVersion: apps/v1
 metadata:
-  namespace: 
+  namespace: abc
   name: abc-tech-dep
-
 spec:
     replicas: 2
     minReadySeconds: 45
@@ -24,11 +23,11 @@ spec:
                 - image: hajnalmt/abctechnologies:test
                   name: app
 ---
-
 kind: Service
 apiVersion: v1
 metadata:
     name: abc-tech-service
+    namespace: abc
 spec:
     type: NodePort
     selector:
@@ -37,3 +36,29 @@ spec:
         - port: 80 #cluster port
           targetPort: 8080 #container image port
           nodePort: 30080 #node port
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: abc-tech-ingress
+  namespace: abc
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    cert-manager.io/cluster-issuer: selfsigned-issuer
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+spec:
+  tls:
+    - hosts:
+        - abc.abc.127.0.0.1.nip.io
+      secretName: abc-tech-tls
+  rules:
+    - host: abc.abc.127.0.0.1.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: abc-tech-service
+                port:
+                  number: 80

@@ -454,15 +454,19 @@ Set Kubernetes URL to https://kubernetes.default (in-cluster) or your cluster’
 Credentials: Use “Kubernetes Service Account” (default for in-cluster Jenkins).
 Test Connection.
 
+For the currently used ones:
+
 This is already there for us!
 ![image](./assets/jenkins_local_kubernetes1.png)
 ![image](./assets/jenkins_local_kubernetes2.png)
+
+==The environment is giving us a Master-Slave architecture by default!==
 
 Let's create a Pod template:
 ![image](./assets/jenkins_maven_agent_pod_template.png)
 ![image](./assets/jenkins_maven_agent_pod_template_container.png)
 
-> **_NOTE:_** It's important to set theName of the container that will run the Jenkins agent to "maven-agent" too. Additionally I needed to tick in the "Inject Jenkins agent in agent container?" boolean.
+> **_NOTE:_** It's important to set the "Name of the container that will run the Jenkins agent to "maven-agent" too. Additionally I needed to tick in the "Inject Jenkins agent in agent container?" boolean.
 
 ### We can use the new template created
 I have created a Jenkins Folder ABC Technologies and a Freestyle pipeline for each step.
@@ -474,3 +478,47 @@ The pipeline will clone the repository:
 
 Also it will execute simple mvn compile command in the appropriate directory.
 ![image](./assets/jenkins_ABC_compile_pipeline_shell_commands.png)
+
+### Creating the pipeline
+Building the pipeline created, will result in a Console output like this:
+![image](./assets/jenkins_ABC_compile_pipeline_example_run1.png)
+![image](./assets/jenkins_ABC_compile_pipeline_example_run2.png)
+![image](./assets/jenkins_ABC_compile_pipeline_example_run3.png)
+
+We can create the rest, of the pipelines with the test and package commands.
+Don't forget to set the build triggers too do if we build the test project each of the others will be triggered.
+![image](./assets/jenkins_ABC_test_pipeline.png)
+![image](./assets/jenkins_ABC_package_pipeline1.png)
+
+I went with the clean install command and the archived the artifacts in the post build step:
+![image](./assets/jenkins_ABC_package_pipeline2.png)
+
+## Task 3
+Write a Docket file Create an Image and container on docker host. Integrate docker host with
+Jenkins. Create CI/CD job on Jenkins to build and deploy on a container
+1. Enhance the package job created in step 1 of task 2 to create a docker image
+2. In the docker image add code to move the war file to tomcat server and build the
+image
+
+### Created Dockerfiles
+There is a Dockerfile under the ABCSolution directory based on the classes.
+Alternatively a minified tomcat Dockerfile (tomcat.Dockerfile) and a minified Ubuntu Dockerfile (ubuntu.Dockerfile) can be used.
+
+They  will result in nearly the same image.
+
+### Jenkins Build step
+Build and Publish the docker images
+The final step is the docker build and push:
+![image](./assets/jenkins_ABC_docker_build_and_push_pipeline1.png)
+![image](./assets/jenkins_ABC_docker_build_and_push_pipeline2.png)
+
+I used my local machine as the server for it and setup my credentials in Jenkins.
+
+If everything is alright the image is pushed and ready:
+![image](./assets/ABC_image_ready.png)
+
+It's under the "hajnalmt/abctechnologies:latest" tag.
+
+### Ansible
+
+

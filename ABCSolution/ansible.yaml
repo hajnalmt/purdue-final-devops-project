@@ -1,30 +1,52 @@
 - hosts: localhost
-  become: yes
+  become: false
+  vars:
+    project_dir: "{{ lookup('env', 'PWD') }}"
+    image_name: "hajnalmt/abctechnologies"
+    image_tag: "latest"
+    dockerfile_path: "{{ project_dir }}/ABCSolution/Dockerfile"
+    build_context: "{{ project_dir }}/ABCTechnologies"
+    container_name: "abc-application"
+    k8s_yaml_dir: "{{ project_dir }}/ABCSolution"
   tasks:
-        - name: Build an image and push it to a private repo
-          community.docker.docker_image:
-              build:
-                  path: "/home/edureka/Desktop"
-              name: docker.io/hajnalmt/abctechnologies
-              tag: test
-              push: true
-              source: build
-          register: out
-        - debug:
-              var: out  
-        - name: start a container
-          community.docker.docker_container:
-             name: abc-application
-             image: hajnalmt/abctechnologies
-             state: started
-             ports:
-                 - 1234:8080
-             restart: true
-          register: out
-        - debug:
-              var: out
-        - name: Create a Deployment by reading the definition from a local file 
-          command: "kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f /home/edureka/Desktop/deployment.yml"    
-          register: out
-        - debug:
-              var: out
+    - name: Build Docker image for ABCTechnologies
+      community.docker.docker_image:
+        build:
+          path: "{{ build_context }}"
+          dockerfile: "{{ dockerfile_path }}"
+        name: "{{ image_name }}"
+        tag: "{{ image_tag }}"
+        push: false
+        source: build
+      register: build_result
+
+    - name: Show build result
+      debug:
+        var: build_result
+
+    - name: Start the container
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        image: "{{ image_name }}:{{ image_tag }}"
+        state: started
+        ports:
+          - "8080:8080"
+        restart_policy: always
+      register: container_result
+
+    - name: Show container result
+      debug:
+        var: container_result
+
+    - name: Apply all Kubernetes YAMLs in ABCSolution
+      shell: |
+        for f in {{ k8s_yaml_dir }}/*.yaml; do
+          kubectl apply -f "$f" --namespace=abc
+        done
+      args:
+        executable: /bin/bash
+      register: k8s_apply_result
+
+    - name: Show kubectl apply result
+      debug:
+        var: k8s_apply_result.stdout_lines

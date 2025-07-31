@@ -1,0 +1,20 @@
+# Ignore build artifacts, local data, and unnecessary files for Docker builds
+assets/
+bin/
+data/
+values
+*.iml
+*.log
+*.md
+.git/
+.gitignore
+
+# Ignore everything in ABCTechnologies except the WAR
+ABCTechnologies/*
+!ABCTechnologies/target/
+!ABCTechnologies/target/*.war
+
+# Ignore everything in XYZTechnologies except the WAR
+XYZTechnologies/*
+!XYZTechnologies/target/
+!XYZTechnologies/target/*.war
